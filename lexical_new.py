@@ -361,13 +361,13 @@ class Lexical:
             if match_split_char:
                 continue
 
-            # 开始匹配关键字（标识编码0开始）
+            # 开始匹配关键字（用字母表示）
             for i, t in enumerate(type_keywords):
                 match = re.compile(t).match(buffer)
                 # print(match)
                 if match and self.__if_behind_split(buffer[match.end():]):
                     tokens.append(
-                        Token(t, buffer[match.start():match.end()], current_line_num, i, 0))
+                        Token(t, buffer[match.start():match.end()], current_line_num, chr(ord('a')+i), 0))
                     if buffer[match.start():match.end()] == 'int':
                         temp_type='int'
                     if buffer[match.start():match.end()] == 'float':
