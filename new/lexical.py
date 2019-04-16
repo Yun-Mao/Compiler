@@ -433,7 +433,7 @@ class Lexical:
                 if match:
                     # 将其添加到 tokens 中
                     tokens.append(
-                        Token(type_op_name[i], buffer[match.start():match.end()], current_line_num, 51+i, 0))
+                        Token(buffer[match.start():match.end()], buffer[match.start():match.end()], current_line_num, 51+i, 0))
                     # buffer 去除已经匹配的部分
                     buffer = buffer[match.end():]
                     match_op = True
@@ -448,7 +448,7 @@ class Lexical:
                 if match:
                     # 将其添加到 tokens 中
                     tokens.append(
-                        Token(t, buffer[match.start():match.end()], current_line_num, 101+i, 0))
+                        Token(buffer[match.start():match.end()], buffer[match.start():match.end()], current_line_num, 101+i, 0))
                     # buffer 去除已经匹配的部分
                     buffer = buffer[match.end():]
                     match_specialchar = True
