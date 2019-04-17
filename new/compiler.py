@@ -5,18 +5,15 @@ from lexical import Lexical
 
 class Compiler:
     overs = set()
-    reserved = set()
-    one_op_set = set()
-    two_next = dict()
 
-    def __init__(self, log_level=0, sharp='#', point='.', acc='acc', productions_file='productions.txt'):
+    def __init__(self, log_level=2, sharp='#', point='.', acc='acc', productions_file='productions.txt'):
         self.log_level = log_level
         with open(productions_file, 'r') as f:
             lines = f.readlines()
             self.start = json.loads(lines[0])
             self.productions = json.loads(lines[1])
         self.nonterminals = self.productions.keys()
-        self.get_overs_reserved()
+        self.get_overs()
 
         self.sharp = sharp
         self.first = {nontermainal: {} for nontermainal in self.nonterminals}
@@ -36,37 +33,13 @@ class Compiler:
         self.acc = acc
         self.get_analyse_table()
 
-    def get_overs_reserved(self):
+    def get_overs(self):
         for nonterminal in self.nonterminals:
             for right in self.productions[nonterminal]:
                 for sign in right:
                     if sign not in self.nonterminals and len(sign) > 0:
                         self.overs.add(sign)
-                        if len(sign) >= 2 and not sign[0].isalpha():
-                            if sign[0] in self.two_next.keys():
-                                self.two_next[sign[0]].add(sign[1:])
-                            else:
-                                self.two_next[sign[0]] = {sign[1:], }
-                        elif sign[0].isalpha():
-                            self.reserved.add(sign)
-                        else:
-                            self.one_op_set.add(sign)
-        remove_set = set()
-        for sign in self.one_op_set:
-            if sign[0] in self.two_next.keys():
-                self.two_next[sign[0]].add('')
-                remove_set.add(sign)
-        for sign in remove_set:
-            self.one_op_set.remove(sign)
-        if self.log_level >= 2:
-            print('over sign set:')
-            pprint(self.overs)
-            print('reserved word set:')
-            pprint(self.reserved)
-            print('one_op_set:')
-            pprint(self.one_op_set)
-            print('two_next dict:')
-            pprint(self.two_next)
+
 
     def get_first_follow(self):
         # 求first第一轮，产生式右部首字符为终结符号
