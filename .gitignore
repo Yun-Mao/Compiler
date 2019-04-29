@@ -54,3 +54,4 @@ __pycache__
 *.two
 *.four
 test.c
+.vscode

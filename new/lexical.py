@@ -113,7 +113,7 @@ class Lexical:
         获取结果
         :return: token 列表
         """
-        return self.__tokens, self.__symtable
+        return self.__tokens, self.__symtable, self.__lexemes
 
     def get_error(self):
         """
