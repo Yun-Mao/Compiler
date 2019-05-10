@@ -15,7 +15,7 @@ from error import SyntaxError
 
 
 class Semantic:
-    def __init__(self,name):
+    def __init__(self, name):
         """构造非终结符的属性
         参数：
         --------
@@ -24,12 +24,13 @@ class Semantic:
         self.token_name = name
         self.s_type = ''
         self.s_value = ''
-        self.s_code = ''
+        self.s_addr = ''
         self.s_width = 0
         self.s_offset = 0
         self.i_offset = 0
-
-
+        self.i_next = 0
+        self.s_truelist = []
+        self.s_falselist = []
 
 class Syntax:
     terminator = set()
@@ -142,7 +143,19 @@ class Syntax:
                             next_first_without_null = {
                                 key for key in self.first[right[i + 1]].keys() if key != ''}
                             # 若A→αBβ,那么将所有FIRST(β)中除了ε之外的所有符号都在FOLLOW(B)中。
+                            new_i = i + 1
                             self.follow[sign] |= next_first_without_null
+                            while '' in next_first and new_i<len(right)-1:
+                                next_first = {
+                                    key for key in self.first[right[new_i + 1]].keys()}
+                                next_first_without_null = {
+                                    key for key in self.first[right[new_i + 1]].keys() if key != ''}
+                                self.follow[sign] |= next_first_without_null
+                            print(sign)
+                            print("test1")
+                            print(next_first)
+                            print("test2")
+                            print(next_first_without_null)
                             # 若A→αBβ且FIRST(β)中包含ε，那么FOLLOW(A)中所有符号都在FOLLOW(B)中。
                             if '' in next_first:
                                 self.follow[sign] |= self.follow[nontermainal]
@@ -251,6 +264,8 @@ class Syntax:
                         # 遍历产生式，if A->α.属于I[i],则所有的over属于FOLLOW(A)加入到ACTION[i,over]=r[j]
                         for left_ in self.nonterminals:
                             for right_ in self.productions[left_]:
+                                if right == ["S","NN", "S","."] and right_ == ["S","NN", "S"]:
+                                    print("stop")
                                 new_right = deepcopy(right)
                                 if new_right == [self.point]:
                                     new_right = ['']
@@ -260,11 +275,18 @@ class Syntax:
                                     # print('new_right')
                                     # print(new_right)
                                     # 根据左部的follow集将r填入分析表
-                                    self.analyse_table[index] = {
-                                        over: [production_index,
-                                               'r', (left_, right_)]
-                                        for over in (self.follow[left_])
-                                    }
+                                    if index not in self.analyse_table.keys():
+                                        self.analyse_table[index] = {
+                                            over: [production_index,
+                                                'r', (left_, right_)]
+                                            for over in (self.follow[left_])
+                                        }
+                                    else:
+                                        self.analyse_table[index].update( {
+                                            over: [production_index,
+                                                'r', (left_, right_)]
+                                            for over in (self.follow[left_])
+                                        })
                                 production_index += 1
             # 遍历接受符号
             for sign, production_set in receive_sign_dict.items():
@@ -288,8 +310,8 @@ class Syntax:
                     self.analyse_table[index] = {sign: new_action}
                 else:
                     self.analyse_table[index].update({sign: new_action})
-            index += 1
             # 如果没有状态可以分析，结束循环
+            index += 1
             if index > count_index:
                 break
         if self.log_level >= 2:
@@ -312,8 +334,10 @@ class Syntax:
         string_index = 0
         status_stack = [0]
         sign_stack = [self.sharp]
+
         three_addr_dict = {}
         three_addr_key = 0
+        temp_index = 0  # 临时变量
         # 不停分析直到接受
         while self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0] != self.acc:
             # 如果不是r，则为s
@@ -325,7 +349,10 @@ class Syntax:
                 sign_stack.append(self.tag_list[string_index])
                 string_index += 1
                 if self.log_level >= 1:
-                    print(status_stack, sign_stack)
+                    pprint(status_stack)
+                    for i in range(len(sign_stack)):
+                        if i != 0:
+                            print(sign_stack[i].token_name)
 
             else:
                 # 为r，取出对应产生式的左部与右部
@@ -335,21 +362,20 @@ class Syntax:
                                            ][self.tag_list[string_index].token_type][2][1]
                 # 语义分析
                 # TO-DO
-                print("语义分析")
+                #print("语义分析")
 
-                print(self.analyse_table[status_stack[-1]]
-                      [self.tag_list[string_index].token_type][0])
+                #print(self.analyse_table[status_stack[-1]]
+                #      [self.tag_list[string_index].token_type][0])
                 # 产生式下标
                 production_index = self.analyse_table[status_stack[-1]
                                                       ][self.tag_list[string_index].token_type][0]
                 # 新建语义分析
-                N_left=Semantic(left)
+                N_left = Semantic(left)
                 top = len(sign_stack)-1
-                if (production_index == 1):
-                    wait = 1
-                    #id_index = sign_stack[len(sign_stack)-4]
-                    # self.symtable_list[id_index.token_symindex].lex_type = semantic_dict['L'].s_type
-                    # self.symtable_list[id_index.token_symindex].lex_kind = "简单变量"
+
+                #id_index = sign_stack[len(sign_stack)-4]
+                # self.symtable_list[id_index.token_symindex].lex_type = semantic_dict['L'].s_type
+                # self.symtable_list[id_index.token_symindex].lex_kind = "简单变量"
 
                 if (production_index == 3):
                     N_left.s_width = 4
@@ -367,39 +393,107 @@ class Syntax:
                         break
                     self.symtable_list[index.token_symindex].lex_val = sign_stack[top-1].s_value
                     #self.symtable_list[index.token_symindex].lex_val = semantic_dict['E'].s_value
-                    #print(index.token_name, '=',
+                    # print(index.token_name, '=',
                     #      semantic_dict['E'][-1].s_value)
                     # print(self.tag_list[id_index].token_name)
+                    #print(sign_stack[top - 3].token_name,
+                         # '=', sign_stack[top - 1].s_addr)
+                    three_addr_dict[three_addr_key]=sign_stack[top - 3].token_name+'='+sign_stack[top - 1].s_addr
+                    three_addr_key+=1
+                if (production_index == 10):
+                    N_left.s_truelist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'>'+sign_stack[top].s_addr+' goto'
+                    three_addr_key+=1
+                    N_left.s_falselist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_key+=1
+                if (production_index == 11):
+                    N_left.s_truelist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'<'+sign_stack[top].s_addr+' goto'
+                    three_addr_key+=1
+                    N_left.s_falselist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_key+=1
+                if (production_index == 12):
+                    N_left.s_truelist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'>='+sign_stack[top].s_addr+' goto'
+                    three_addr_key+=1
+                    N_left.s_falselist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_key+=1
+                if (production_index == 13):
+                    N_left.s_truelist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'<='+sign_stack[top].s_addr+' goto'
+                    three_addr_key+=1
+                    N_left.s_falselist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_key+=1
+                if (production_index == 14):
+                    N_left.s_truelist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'=='+sign_stack[top].s_addr+' goto'
+                    three_addr_key+=1
+                    N_left.s_falselist=[three_addr_key]
+                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_key+=1
                 if (production_index == 15):
-                    N_left.s_value = sign_stack[top-2].s_value + sign_stack[top].s_value
+                    N_left.s_addr = 't' + str(temp_index)
+                    temp_index += 1
+                    N_left.s_value = sign_stack[top -
+                                                2].s_value + sign_stack[top].s_value
+                    three_addr_dict[three_addr_key]=N_left.s_addr+ '='+ sign_stack[top - 2].s_addr+ '+'+ sign_stack[top].s_addr
+                    three_addr_key+=1
                 if (production_index == 16):
-                    N_left.s_value = sign_stack[top-2].s_value - sign_stack[top].s_value
+                    N_left.s_addr = 't' + str(temp_index)
+                    temp_index += 1
+                    N_left.s_value = sign_stack[top -
+                                                2].s_value - sign_stack[top].s_value
+                    three_addr_dict[three_addr_key]=N_left.s_addr+ '='+ sign_stack[top - 2].s_addr+ '-'+ sign_stack[top].s_addr
+                    three_addr_key+=1
                 if (production_index == 17):
-                    N_left.s_value=sign_stack[top].s_value
+                    N_left.s_value = sign_stack[top].s_value
+                    N_left.s_addr = sign_stack[top].s_addr
                 if (production_index == 18):
-                    N_left.s_value=sign_stack[top].s_value
+                    N_left.s_value = sign_stack[top].s_value
+                    N_left.s_addr = sign_stack[top].s_addr
                 if (production_index == 19):
-                    N_left.s_value = sign_stack[top-2].s_value * sign_stack[top].s_value
+                    N_left.s_addr = 't' + str(temp_index)
+                    temp_index += 1
+                    N_left.s_value = sign_stack[top -
+                                                2].s_value * sign_stack[top].s_value
+                    three_addr_dict[three_addr_key]=N_left.s_addr+ '='+ sign_stack[top - 2].s_addr+ '*'+ sign_stack[top].s_addr
+                    three_addr_key+=1
                 if (production_index == 20):
-                    N_left.s_value = sign_stack[top-2].s_value / sign_stack[top].s_value
+                    N_left.s_addr = 't' + str(temp_index)
+                    temp_index += 1
+                    N_left.s_value = sign_stack[top -
+                                                2].s_value / sign_stack[top].s_value
+                    three_addr_dict[three_addr_key]=N_left.s_addr+ '='+ sign_stack[top - 2].s_addr+ '/'+ sign_stack[top].s_addr
+                    three_addr_key+=1
                 if (production_index == 21):
                     N_left.s_value = sign_stack[top-1].s_value
+                    N_left.s_addr = sign_stack[top-1].s_addr
                 if (production_index == 22):
-                    wait = 22
                     N_left.s_value = self.symtable_list[sign_stack[top].token_symindex].lex_val
+                    N_left.s_addr = sign_stack[top].token_name
                 if (production_index == 23):
                     num = sign_stack[top].token_name
                     N_left.s_value = int(num)
+                    N_left.s_addr = num
                 if (production_index == 24):
                     num = sign_stack[top].token_name
                     N_left.s_value = float(num)
+                    N_left.s_addr = num
                 if (production_index == 25):
-                    N_left.s_offset = 0
+                    N_left.i_offset = 0#其实这个应该是综合属性（但不管了）
                 if (production_index == 26):
-                    N_left.s_offset = sign_stack[top-3].s_offset+sign_stack[top-2].s_width
-                    self.symtable_list[sign_stack[top-1].token_symindex].lex_type = sign_stack[top-2].s_type
-                    self.symtable_list[sign_stack[top-1].token_symindex].lex_kind = "简单变量"
-                    self.symtable_list[sign_stack[top-1].token_symindex].lex_addr = sign_stack[top-3].s_offset 
+                    N_left.i_offset = sign_stack[top -
+                                                 3].i_offset+sign_stack[top-2].s_width
+                    self.symtable_list[sign_stack[top -
+                                                  1].token_symindex].lex_type = sign_stack[top-2].s_type
+                    self.symtable_list[sign_stack[top -
+                                                  1].token_symindex].lex_kind = "简单变量"
+                    self.symtable_list[sign_stack[top -
+                                                  1].token_symindex].lex_addr = sign_stack[top-3].i_offset
                 # print(self.symtable_list[self.tag_list[string_index].token_symindex].lex_type)
                 # 语义分析结束
                 # pop(第i个产生式右部文法符号的个数)
@@ -415,7 +509,7 @@ class Syntax:
                     pprint(status_stack)
                     for i in range(len(sign_stack)):
                         if i != 0:
-                            print(sign_stack[i].token_name)     
+                            print(sign_stack[i].token_name)
             # error，退出循环
 
             if self.tag_list[string_index].token_type not in self.analyse_table[status_stack[-1]].keys():
@@ -427,8 +521,7 @@ class Syntax:
         for i in self.symtable_list:
             print(self.symtable_list[i].lex_type, self.symtable_list[i].lex_kind,
                   self.symtable_list[i].lex_val, self.symtable_list[i].lex_addr)
-
-        print('ok')
+        pprint(three_addr_dict)
         return True
 
     def analyse(self, file):
