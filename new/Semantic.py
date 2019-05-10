@@ -11,11 +11,38 @@ from pprint import pprint
 from copy import deepcopy
 from lexical import Lexical
 from lexical import Token
+from error import SyntaxError
+
+
+class Semantic:
+    def __init__(self,name):
+        """构造非终结符的属性
+        参数：
+        --------
+        s_type: 综合属性
+        """
+        self.token_name = name
+        self.s_type = ''
+        self.s_value = ''
+        self.s_code = ''
+        self.s_width = 0
+        self.s_offset = 0
+        self.i_offset = 0
+
+
 
 class Syntax:
     terminator = set()
 
+    def get_error(self):
+        """
+        获取错误
+        :return: 错误原因
+        """
+        return self.__error
+
     def __init__(self, log_level=2, sharp='#', point='.', acc='acc', productions_file='C:\\Users\\YunMao\\Desktop\\Coding\\Compiler\\new\\productions1.txt'):
+        self.__error = list()
         self.log_level = log_level  # log显示等级（仅因为显示太多烦）
         with open(productions_file, 'r') as f:
             lines = f.readlines()
@@ -229,10 +256,6 @@ class Syntax:
                                     new_right = ['']
                                 else:
                                     new_right.remove(self.point)
-                                # print('_right')
-                                # print(right_)
-                                # print('new_right')
-                                # print(new_right)
                                 if (left, new_right) == (left_, right_):
                                     # print('new_right')
                                     # print(new_right)
@@ -270,6 +293,11 @@ class Syntax:
             if index > count_index:
                 break
         if self.log_level >= 2:
+            production_index = 0  # 产生式下标
+            for left_ in self.nonterminals:
+                for right_ in self.productions[left_]:
+                    print(production_index, left_, right_)
+                    production_index += 1
             print('stauts list:')
             pprint(self.status_list)
             print('analyse table:')
@@ -279,34 +307,100 @@ class Syntax:
         if self.log_level >= 1:
             print('grammar analyse:')
         # 初始化输入串列表、状态栈、符号栈
-        sharp=Token(self.sharp,0,0,0,0)
-
+        sharp = Token(self.sharp, 0, 0, 0, 0)
         self.tag_list.append(sharp)
-
         string_index = 0
-        status_stack = [0, ]
-        sign_stack = [self.sharp, ]
-
+        status_stack = [0]
+        sign_stack = [self.sharp]
+        three_addr_dict = {}
+        three_addr_key = 0
         # 不停分析直到接受
         while self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0] != self.acc:
             # 如果不是r，则为s
+
             if 'r' != self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][1]:
                 # push
                 status_stack.append(
                     self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0])
-                sign_stack.append(self.tag_list[string_index].token_type)
-                # advance
+                sign_stack.append(self.tag_list[string_index])
                 string_index += 1
                 if self.log_level >= 1:
                     print(status_stack, sign_stack)
+
             else:
                 # 为r，取出对应产生式的左部与右部
                 left = self.analyse_table[status_stack[-1]
                                           ][self.tag_list[string_index].token_type][2][0]
                 right = self.analyse_table[status_stack[-1]
                                            ][self.tag_list[string_index].token_type][2][1]
-                # 语义分析，四元式
+                # 语义分析
                 # TO-DO
+                print("语义分析")
+
+                print(self.analyse_table[status_stack[-1]]
+                      [self.tag_list[string_index].token_type][0])
+                # 产生式下标
+                production_index = self.analyse_table[status_stack[-1]
+                                                      ][self.tag_list[string_index].token_type][0]
+                # 新建语义分析
+                N_left=Semantic(left)
+                top = len(sign_stack)-1
+                if (production_index == 1):
+                    wait = 1
+                    #id_index = sign_stack[len(sign_stack)-4]
+                    # self.symtable_list[id_index.token_symindex].lex_type = semantic_dict['L'].s_type
+                    # self.symtable_list[id_index.token_symindex].lex_kind = "简单变量"
+
+                if (production_index == 3):
+                    N_left.s_width = 4
+                    N_left.s_type = 'int'
+
+                if (production_index == 4):
+                    N_left.s_width = 8
+                    N_left.s_type = 'float'
+                if (production_index == 5):
+                    index = sign_stack[len(sign_stack)-4]
+                    error_line = index.token_line
+                    if self.symtable_list[index.token_symindex].lex_type == 'None':
+                        self.__error.append(SyntaxError(
+                            '标识符'+index.token_name+'未定义', str(error_line)))
+                        break
+                    self.symtable_list[index.token_symindex].lex_val = sign_stack[top-1].s_value
+                    #self.symtable_list[index.token_symindex].lex_val = semantic_dict['E'].s_value
+                    #print(index.token_name, '=',
+                    #      semantic_dict['E'][-1].s_value)
+                    # print(self.tag_list[id_index].token_name)
+                if (production_index == 15):
+                    N_left.s_value = sign_stack[top-2].s_value + sign_stack[top].s_value
+                if (production_index == 16):
+                    N_left.s_value = sign_stack[top-2].s_value - sign_stack[top].s_value
+                if (production_index == 17):
+                    N_left.s_value=sign_stack[top].s_value
+                if (production_index == 18):
+                    N_left.s_value=sign_stack[top].s_value
+                if (production_index == 19):
+                    N_left.s_value = sign_stack[top-2].s_value * sign_stack[top].s_value
+                if (production_index == 20):
+                    N_left.s_value = sign_stack[top-2].s_value / sign_stack[top].s_value
+                if (production_index == 21):
+                    N_left.s_value = sign_stack[top-1].s_value
+                if (production_index == 22):
+                    wait = 22
+                    N_left.s_value = self.symtable_list[sign_stack[top].token_symindex].lex_val
+                if (production_index == 23):
+                    num = sign_stack[top].token_name
+                    N_left.s_value = int(num)
+                if (production_index == 24):
+                    num = sign_stack[top].token_name
+                    N_left.s_value = float(num)
+                if (production_index == 25):
+                    N_left.s_offset = 0
+                if (production_index == 26):
+                    N_left.s_offset = sign_stack[top-3].s_offset+sign_stack[top-2].s_width
+                    self.symtable_list[sign_stack[top-1].token_symindex].lex_type = sign_stack[top-2].s_type
+                    self.symtable_list[sign_stack[top-1].token_symindex].lex_kind = "简单变量"
+                    self.symtable_list[sign_stack[top-1].token_symindex].lex_addr = sign_stack[top-3].s_offset 
+                # print(self.symtable_list[self.tag_list[string_index].token_symindex].lex_type)
                 # 语义分析结束
                 # pop(第i个产生式右部文法符号的个数)
                 for i in range(len(right)):
@@ -314,20 +408,26 @@ class Syntax:
                     if right != ['']:
                         sign_stack.pop()
                         status_stack.pop()
-                # if self.log_level >= 1:
-                    #print(status_stack, sign_stack)
-                # push(GOTO[新的栈顶状态][第i个产生式的左部])
                 status_stack.append(
                     self.analyse_table[status_stack[-1]][left][0])
-                sign_stack.append(left)
+                sign_stack.append(N_left)
                 if self.log_level >= 1:
-                    print(status_stack, sign_stack)
+                    pprint(status_stack)
+                    for i in range(len(sign_stack)):
+                        if i != 0:
+                            print(sign_stack[i].token_name)     
             # error，退出循环
+
             if self.tag_list[string_index].token_type not in self.analyse_table[status_stack[-1]].keys():
-                print(status_stack[-1])
-                print('fail1', string_index,
-                      self.tag_list[string_index].token_type, status_stack[-1])
-                return False
+                error_line = self.tag_list[string_index].token_line
+                if status_stack[-1] == 4:
+                    self.__error.append(SyntaxError(
+                        'int 后只能跟标识符 错误跟随'+self.tag_list[string_index].token_name, str(error_line)))
+
+        for i in self.symtable_list:
+            print(self.symtable_list[i].lex_type, self.symtable_list[i].lex_kind,
+                  self.symtable_list[i].lex_val, self.symtable_list[i].lex_addr)
+
         print('ok')
         return True
 
@@ -350,12 +450,17 @@ class Syntax:
                 print(i.token_type, i.token_name, i.token_line,
                       i.token_code, i.token_symindex)
                 self.tag_list.append(i)
+            self.symtable_list = lexical_result2
             for i in lexical_result2:
                 print(lexical_result2[i].lex_type, lexical_result2[i].lex_kind,
-                      lexical_result2[i].lex_val, lexical_result2[i].lex_num)
+                      lexical_result2[i].lex_val, lexical_result2[i].lex_addr)
             pprint(lexical_result3)
             print()
             self.analyse_yufa()
+            syntax_error = self.get_error()
+            for i in syntax_error:
+                print('错误原因:\t', i.info, '错误所在行:', i.line)
+            return False
         else:
             lexical_error = lexical.get_error()
             for i in lexical_error:

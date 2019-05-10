@@ -40,4 +40,5 @@ class SyntaxError(Error):
         :param line: 错误行数
         """
         super().__init__(error_info)
+        self.info = error_info
         self.line = error_line

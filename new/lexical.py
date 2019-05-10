@@ -20,20 +20,20 @@ class SymTable:
     """符号表
     """
 
-    def __init__(self, lex_type, lex_kind, lex_val, lex_num):
+    def __init__(self, lex_type, lex_kind, lex_val, lex_addr):
         """构造符号表
 
         参数：
         --------
         lex_type: 标识符类型
         lex_kind: 标识符所属的种类
-        lex_val: 常数标识符的值
-        lex_num: 序号
+        lex_val: 标识符的值
+        lex_addr: 地址
         """
         self.lex_type = lex_type
         self.lex_kind = lex_kind
         self.lex_val = lex_val
-        self.lex_num = lex_num
+        self.lex_addr = lex_addr
 
 
 class Token:
@@ -391,8 +391,10 @@ class Lexical:
                         buffer[match.start():match.end()])
                     # print(isinsymtable)
                     if not isinsymtable:
+                        #self.__symtable[index] = SymTable(
+                            #temp_type, 'None', 'None', 'None')
                         self.__symtable[index] = SymTable(
-                            temp_type, 'None', 'None', 'None')
+                            'None', 'None', 'None', 'None')
                         # print(buffer[match.start():match.end()]+"$")
                         self.__lexemes = self.__lexemes + \
                             buffer[match.start():match.end()]+"$"
