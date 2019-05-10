@@ -31,6 +31,8 @@ class Semantic:
         self.i_next = 0
         self.s_truelist = []
         self.s_falselist = []
+        self.s_instr=0
+        self.s_nextlist=[]
 
 class Syntax:
     terminator = set()
@@ -400,40 +402,63 @@ class Syntax:
                          # '=', sign_stack[top - 1].s_addr)
                     three_addr_dict[three_addr_key]=sign_stack[top - 3].token_name+'='+sign_stack[top - 1].s_addr
                     three_addr_key+=1
+                if (production_index == 6):
+                    for i in sign_stack[top - 5].s_truelist:
+                        three_addr_dict[i]+= str(sign_stack[top - 3].s_instr)
+                    N_left.s_nextlist=list(set(sign_stack[top - 5].s_falselist+sign_stack[top - 1].s_nextlist))
+                if (production_index == 7):
+                    for i in sign_stack[top - 11].s_truelist:
+                        three_addr_dict[i]+= str(sign_stack[top - 9].s_instr)
+                    for i in sign_stack[top - 11].s_falselist:
+                        three_addr_dict[i]+= str(sign_stack[top - 3].s_instr)
+                    temp=list(set(sign_stack[top - 7].s_nextlist+sign_stack[top - 5].s_nextlist))
+                    N_left.s_nextlist=list(set(temp+sign_stack[top - 1].s_nextlist))
+                if (production_index == 8):
+                    for i in sign_stack[top - 1].s_nextlist:
+                        three_addr_dict[i]+= str(sign_stack[top - 7].s_instr)
+                    for i in sign_stack[top - 5].s_truelist:
+                        three_addr_dict[i]+= str(sign_stack[top - 3].s_instr)
+                    N_left.s_nextlist=sign_stack[top - 5].s_falselist
+                    three_addr_dict[three_addr_key]='goto '+str(sign_stack[top - 7].s_instr)
+                    three_addr_key+=1
+                if (production_index == 9):
+                    for i in sign_stack[top - 2].s_nextlist:
+                        three_addr_dict[i]+= str(sign_stack[top - 1].s_instr)
+                    N_left.s_nextlist = sign_stack[top].s_nextlist
                 if (production_index == 10):
                     N_left.s_truelist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'>'+sign_stack[top].s_addr+' goto'
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'>'+sign_stack[top].s_addr+' goto '
                     three_addr_key+=1
                     N_left.s_falselist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_dict[three_addr_key]='goto '
                     three_addr_key+=1
                 if (production_index == 11):
                     N_left.s_truelist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'<'+sign_stack[top].s_addr+' goto'
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'<'+sign_stack[top].s_addr+' goto '
                     three_addr_key+=1
                     N_left.s_falselist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_dict[three_addr_key]='goto '
                     three_addr_key+=1
                 if (production_index == 12):
                     N_left.s_truelist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'>='+sign_stack[top].s_addr+' goto'
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'>='+sign_stack[top].s_addr+' goto '
                     three_addr_key+=1
                     N_left.s_falselist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_dict[three_addr_key]='goto '
                     three_addr_key+=1
                 if (production_index == 13):
                     N_left.s_truelist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'<='+sign_stack[top].s_addr+' goto'
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'<='+sign_stack[top].s_addr+' goto '
                     three_addr_key+=1
                     N_left.s_falselist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_dict[three_addr_key]='goto '
                     three_addr_key+=1
                 if (production_index == 14):
                     N_left.s_truelist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'=='+sign_stack[top].s_addr+' goto'
+                    three_addr_dict[three_addr_key]='if '+sign_stack[top - 2].s_addr+'=='+sign_stack[top].s_addr+' goto '
                     three_addr_key+=1
                     N_left.s_falselist=[three_addr_key]
-                    three_addr_dict[three_addr_key]='goto'
+                    three_addr_dict[three_addr_key]='goto '
                     three_addr_key+=1
                 if (production_index == 15):
                     N_left.s_addr = 't' + str(temp_index)
@@ -494,6 +519,12 @@ class Syntax:
                                                   1].token_symindex].lex_kind = "简单变量"
                     self.symtable_list[sign_stack[top -
                                                   1].token_symindex].lex_addr = sign_stack[top-3].i_offset
+                if (production_index == 27):
+                    N_left.s_instr = three_addr_key
+                if (production_index == 28):
+                    N_left.s_nextlist = [three_addr_key]
+                    three_addr_dict[three_addr_key]='goto '
+                    three_addr_key+=1
                 # print(self.symtable_list[self.tag_list[string_index].token_symindex].lex_type)
                 # 语义分析结束
                 # pop(第i个产生式右部文法符号的个数)
