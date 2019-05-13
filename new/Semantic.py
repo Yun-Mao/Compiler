@@ -121,7 +121,8 @@ class Syntax:
             if last_first == self.first:
                 break
         # pprint(self.first)
-
+        for i in self.terminator:  # 特殊处理终结符，等价于书上的FIRST级中包含终结符。
+            self.first[i]=({i:i})
         # 起始符号follow集
         self.follow[self.start].add(self.sharp)  # 若S是开始符，则$ 属于FOLLOW(S)
         # 循环直到follow集不再变化
@@ -137,8 +138,6 @@ class Syntax:
                         if i == len(right) - 1:
                             # 若A→αB，那么FOLLOW(A)中所有符号都在FOLLOW(B)中。
                             self.follow[sign] |= self.follow[nontermainal]
-                        elif right[i + 1] in self.terminator:  # 特殊处理终结符，等价于书上的FIRST级中包含终结符。
-                            self.follow[sign].add(right[i + 1])
                         else:
                             next_first = {
                                 key for key in self.first[right[i + 1]].keys()}
@@ -350,7 +349,7 @@ class Syntax:
                     self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0])
                 sign_stack.append(self.tag_list[string_index])
                 string_index += 1
-                if self.log_level >= 1:
+                if self.log_level >= 9:
                     pprint(status_stack)
                     for i in range(len(sign_stack)):
                         if i != 0:
@@ -536,11 +535,11 @@ class Syntax:
                 status_stack.append(
                     self.analyse_table[status_stack[-1]][left][0])
                 sign_stack.append(N_left)
-                if self.log_level >= 1:
-                    pprint(status_stack)
-                    for i in range(len(sign_stack)):
-                        if i != 0:
-                            print(sign_stack[i].token_name)
+                # if self.log_level >= 1:
+                    # pprint(status_stack)
+                    # for i in range(len(sign_stack)):
+                        # if i != 0:
+                            # print(sign_stack[i].token_name)
             # error，退出循环
 
             if self.tag_list[string_index].token_type not in self.analyse_table[status_stack[-1]].keys():

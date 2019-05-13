@@ -11,11 +11,41 @@ from pprint import pprint
 from copy import deepcopy
 from lexical import Lexical
 from lexical import Token
+from error import SyntaxError
+
+
+class Semantic:
+    def __init__(self, name):
+        """构造非终结符的属性
+        参数：
+        --------
+        s_type: 综合属性
+        """
+        self.token_name = name
+        self.s_type = ''
+        self.s_value = ''
+        self.s_addr = ''
+        self.s_width = 0
+        self.s_offset = 0
+        self.i_offset = 0
+        self.i_next = 0
+        self.s_truelist = []
+        self.s_falselist = []
+        self.s_instr=0
+        self.s_nextlist=[]
 
 class Syntax:
     terminator = set()
 
-    def __init__(self, log_level=2, sharp='#', point='.', acc='acc', productions_file='C:\\Users\\YunMao\\Desktop\\Coding\\Compiler\\new\\productions1.txt'):
+    def get_error(self):
+        """
+        获取错误
+        :return: 错误原因
+        """
+        return self.__error
+
+    def __init__(self, log_level=2, sharp='#', point='.', acc='acc', productions_file='C:\\Users\\YunMao\\Desktop\\Coding\\Compiler\\new\\productions2.txt'):
+        self.__error = list()
         self.log_level = log_level  # log显示等级（仅因为显示太多烦）
         with open(productions_file, 'r') as f:
             lines = f.readlines()
@@ -91,7 +121,8 @@ class Syntax:
             if last_first == self.first:
                 break
         # pprint(self.first)
-
+        for i in self.terminator:  # 特殊处理终结符，等价于书上的FIRST级中包含终结符。
+            self.first[i]=({i:i})
         # 起始符号follow集
         self.follow[self.start].add(self.sharp)  # 若S是开始符，则$ 属于FOLLOW(S)
         # 循环直到follow集不再变化
@@ -107,15 +138,26 @@ class Syntax:
                         if i == len(right) - 1:
                             # 若A→αB，那么FOLLOW(A)中所有符号都在FOLLOW(B)中。
                             self.follow[sign] |= self.follow[nontermainal]
-                        elif right[i + 1] in self.terminator:  # 特殊处理终结符，等价于书上的FIRST级中包含终结符。
-                            self.follow[sign].add(right[i + 1])
+                        
                         else:
                             next_first = {
                                 key for key in self.first[right[i + 1]].keys()}
                             next_first_without_null = {
                                 key for key in self.first[right[i + 1]].keys() if key != ''}
                             # 若A→αBβ,那么将所有FIRST(β)中除了ε之外的所有符号都在FOLLOW(B)中。
+                            new_i = i + 1
                             self.follow[sign] |= next_first_without_null
+                            while '' in next_first and new_i<len(right)-1:
+                                next_first = {
+                                    key for key in self.first[right[new_i + 1]].keys()}
+                                next_first_without_null = {
+                                    key for key in self.first[right[new_i + 1]].keys() if key != ''}
+                                self.follow[sign] |= next_first_without_null
+                            print(sign)
+                            print("test1")
+                            print(next_first)
+                            print("test2")
+                            print(next_first_without_null)
                             # 若A→αBβ且FIRST(β)中包含ε，那么FOLLOW(A)中所有符号都在FOLLOW(B)中。
                             if '' in next_first:
                                 self.follow[sign] |= self.follow[nontermainal]
@@ -224,24 +266,29 @@ class Syntax:
                         # 遍历产生式，if A->α.属于I[i],则所有的over属于FOLLOW(A)加入到ACTION[i,over]=r[j]
                         for left_ in self.nonterminals:
                             for right_ in self.productions[left_]:
+                                if right == ["S","NN", "S","."] and right_ == ["S","NN", "S"]:
+                                    print("stop")
                                 new_right = deepcopy(right)
                                 if new_right == [self.point]:
                                     new_right = ['']
                                 else:
                                     new_right.remove(self.point)
-                                # print('_right')
-                                # print(right_)
-                                # print('new_right')
-                                # print(new_right)
                                 if (left, new_right) == (left_, right_):
                                     # print('new_right')
                                     # print(new_right)
                                     # 根据左部的follow集将r填入分析表
-                                    self.analyse_table[index] = {
-                                        over: [production_index,
-                                               'r', (left_, right_)]
-                                        for over in (self.follow[left_])
-                                    }
+                                    if index not in self.analyse_table.keys():
+                                        self.analyse_table[index] = {
+                                            over: [production_index,
+                                                'r', (left_, right_)]
+                                            for over in (self.follow[left_])
+                                        }
+                                    else:
+                                        self.analyse_table[index].update( {
+                                            over: [production_index,
+                                                'r', (left_, right_)]
+                                            for over in (self.follow[left_])
+                                        })
                                 production_index += 1
             # 遍历接受符号
             for sign, production_set in receive_sign_dict.items():
@@ -265,11 +312,16 @@ class Syntax:
                     self.analyse_table[index] = {sign: new_action}
                 else:
                     self.analyse_table[index].update({sign: new_action})
-            index += 1
             # 如果没有状态可以分析，结束循环
+            index += 1
             if index > count_index:
                 break
         if self.log_level >= 2:
+            production_index = 0  # 产生式下标
+            for left_ in self.nonterminals:
+                for right_ in self.productions[left_]:
+                    print(production_index, left_, right_)
+                    production_index += 1
             print('stauts list:')
             pprint(self.status_list)
             print('analyse table:')
@@ -279,34 +331,50 @@ class Syntax:
         if self.log_level >= 1:
             print('grammar analyse:')
         # 初始化输入串列表、状态栈、符号栈
-        sharp=Token(self.sharp,0,0,0,0)
-
+        sharp = Token(self.sharp, 0, 0, 0, 0)
         self.tag_list.append(sharp)
-
         string_index = 0
-        status_stack = [0, ]
-        sign_stack = [self.sharp, ]
+        status_stack = [0]
+        sign_stack = [self.sharp]
 
+        three_addr_dict = {}
+        three_addr_key = 0
+        temp_index = 0  # 临时变量
         # 不停分析直到接受
         while self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0] != self.acc:
             # 如果不是r，则为s
+
             if 'r' != self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][1]:
                 # push
                 status_stack.append(
                     self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0])
-                sign_stack.append(self.tag_list[string_index].token_type)
-                # advance
+                sign_stack.append(self.tag_list[string_index])
                 string_index += 1
                 if self.log_level >= 1:
-                    print(status_stack, sign_stack)
+                    pprint(status_stack)
+                    for i in range(len(sign_stack)):
+                        if i != 0:
+                            print(sign_stack[i].token_name)
+
             else:
                 # 为r，取出对应产生式的左部与右部
                 left = self.analyse_table[status_stack[-1]
                                           ][self.tag_list[string_index].token_type][2][0]
                 right = self.analyse_table[status_stack[-1]
                                            ][self.tag_list[string_index].token_type][2][1]
-                # 语义分析，四元式
+                # 语义分析
                 # TO-DO
+                #print("语义分析")
+
+                #print(self.analyse_table[status_stack[-1]]
+                #      [self.tag_list[string_index].token_type][0])
+                # 产生式下标
+                production_index = self.analyse_table[status_stack[-1]
+                                                      ][self.tag_list[string_index].token_type][0]
+                # 新建语义分析
+                N_left = Semantic(left)
+
+                # print(self.symtable_list[self.tag_list[string_index].token_symindex].lex_type)
                 # 语义分析结束
                 # pop(第i个产生式右部文法符号的个数)
                 for i in range(len(right)):
@@ -314,26 +382,31 @@ class Syntax:
                     if right != ['']:
                         sign_stack.pop()
                         status_stack.pop()
-                # if self.log_level >= 1:
-                    #print(status_stack, sign_stack)
-                # push(GOTO[新的栈顶状态][第i个产生式的左部])
                 status_stack.append(
                     self.analyse_table[status_stack[-1]][left][0])
-                sign_stack.append(left)
+                sign_stack.append(N_left)
                 if self.log_level >= 1:
-                    print(status_stack, sign_stack)
+                    print(status_stack)
+                    for i in range(len(sign_stack)):
+                        if i != 0:
+                            print(sign_stack[i].token_name)
             # error，退出循环
+
             if self.tag_list[string_index].token_type not in self.analyse_table[status_stack[-1]].keys():
-                print(status_stack[-1])
-                print('fail1', string_index,
-                      self.tag_list[string_index].token_type, status_stack[-1])
-                return False
-        print('ok')
+                error_line = self.tag_list[string_index].token_line
+                if status_stack[-1] == 4:
+                    self.__error.append(SyntaxError(
+                        'int 后只能跟标识符 错误跟随'+self.tag_list[string_index].token_name, str(error_line)))
+
+        for i in self.symtable_list:
+            print(self.symtable_list[i].lex_type, self.symtable_list[i].lex_kind,
+                  self.symtable_list[i].lex_val, self.symtable_list[i].lex_addr)
+        pprint(three_addr_dict)
         return True
 
     def analyse(self, file):
         print('analysing: ' + file, end='\n\n')
-        self.tag_list = []
+        self.tag_list = [Token('a','a',0,0,0),Token('a','a',0,0,0),Token('a','a',0,0,0),Token('b','b',0,0,0),Token('b','b',0,0,0),Token('b','b',0,0,0)]
         # 新建词法分析器
         lexical = Lexical()
         # 载入源代码
@@ -349,13 +422,18 @@ class Syntax:
             for i in lexical_result1:
                 print(i.token_type, i.token_name, i.token_line,
                       i.token_code, i.token_symindex)
-                self.tag_list.append(i)
+                #self.tag_list.append(i)
+            self.symtable_list = lexical_result2
             for i in lexical_result2:
                 print(lexical_result2[i].lex_type, lexical_result2[i].lex_kind,
-                      lexical_result2[i].lex_val, lexical_result2[i].lex_num)
+                      lexical_result2[i].lex_val, lexical_result2[i].lex_addr)
             pprint(lexical_result3)
             print()
             self.analyse_yufa()
+            syntax_error = self.get_error()
+            for i in syntax_error:
+                print('错误原因:\t', i.info, '错误所在行:', i.line)
+            return False
         else:
             lexical_error = lexical.get_error()
             for i in lexical_error:
@@ -363,4 +441,4 @@ class Syntax:
 
 
 compiler = Syntax()
-compiler.analyse("new/test.c")
+compiler.analyse("new/test2.c")
