@@ -1,53 +1,176 @@
 """The Rule of Lexical
 @Author:YunMao
 """
-
-# 说明语句
-syntax_sm = [
-    "auto", "break", "case", "char", "const", "continue",
-    "default", "do", "double", "else", "enum", "extern",
-    "float", "for", "goto", "if", "int", "long", "register",
-    "return", "short", "signed", "static", "sizeof", "struct",
-    "switch", "typedef", "union", "unsigned", "void", "volatile", "while"
-]
-# 标识符
-type_id = [
-    r'\b[a-zA-Z_]\w*'
-]
-# 数字
-types_num = [
-    r'^-?[1-9]\d*\.\d*|-0\.\d*[1-9]\d*',
-    r'^-?[1-9]\d*'
-]
-# 操作数
-type_op = [
-    r'\+', r'-', r'\*', r'/', r'%', r'==', r'>=', r'<=', r'!=', r'>', r'=', r'<'
-]
-type_op_name = [
-    'add', 'sub', 'mult', 'div', 'mod', 'equal', 'bigger-equal', 'smaller-equal', 'not-equal', 'bigger', 'evaluate', 'smaller'
-]
-# 分隔符
-type_specialchar = [
-    r',',r'\(',r'\)',r'\[',r'\]',r'\{',r'\}',r';',r'\''
-]
-type_specialchar_name = [
-   'comma','left-parentheses','right-parentheses','left-bracket','right-bracket','left-brace','right-brace','semicolon'
-]
-# 空格符号
-split_char_type = [
-    r' +',
-]
-
-# 注释
-note_char_type = (
-    'note-start',
-    'note-end',
-    'note'
-)
-
-# 注释正则表达式
-regex_dict = {
-    'note': r'//',
-    'note-start': r'/\*',
-    'note-end': r'\*/'
+syntax_start = "P"
+syntax_rule={
+    "P": [
+        [
+            "M",
+            "D",
+            "S"
+        ]
+    ],
+    "D": [
+        [
+            "L",
+            "id",
+            ";",
+            "N",
+            "D"
+        ],
+        [
+            ""
+        ]
+    ],
+    "L": [
+        [
+            "int"
+        ],
+        [
+            "float"
+        ]
+    ],
+    "S": [
+        [
+            "id",
+            "=",
+            "E",
+            ";"
+        ],
+        [
+            "if",
+            "(",
+            "C",
+            ")",
+            "MM",
+            "{",
+            "S",
+            "}"
+        ],
+        [
+            "if",
+            "(",
+            "C",
+            ")",
+            "MM",
+            "{",
+            "S",
+            "}",
+            "NN",
+            "else",
+            "MM",
+            "{",
+            "S",
+            "}"
+        ],
+        [
+            "while",
+            "MM",
+            "(",
+            "C",
+            ")",
+            "MM",
+            "{",
+            "S",
+            "}"
+        ],
+        [
+            "S",
+            "MM",
+            "S"
+        ]
+    ],
+    "C": [
+        [
+            "E",
+            ">",
+            "E"
+        ],
+        [
+            "E",
+            "<",
+            "E"
+        ],
+        [
+            "E",
+            ">=",
+            "E"
+        ],
+        [
+            "E",
+            "<=",
+            "E"
+        ],
+        [
+            "E",
+            "==",
+            "E"
+        ]
+    ],
+    "E": [
+        [
+            "E",
+            "+",
+            "T"
+        ],
+        [
+            "E",
+            "-",
+            "T"
+        ],
+        [
+            "T"
+        ]
+    ],
+    "T": [
+        [
+            "F"
+        ],
+        [
+            "T",
+            "*",
+            "F"
+        ],
+        [
+            "T",
+            "/",
+            "F"
+        ]
+    ],
+    "F": [
+        [
+            "(",
+            "E",
+            ")"
+        ],
+        [
+            "id"
+        ],
+        [
+            "num_int"
+        ],
+        [
+            "num_float"
+        ]
+    ],
+    "M": [
+        [
+            ""
+        ]
+    ],
+    "N": [
+        [
+            ""
+        ]
+    ],
+    "MM": [
+        [
+            ""
+        ]
+    ],
+    "NN": [
+        [
+            ""
+        ]
+    ]
 }

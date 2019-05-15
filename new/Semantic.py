@@ -11,6 +11,7 @@ from pprint import pprint
 from copy import deepcopy
 from lexical import Lexical
 from lexical import Token
+from rule.syntax import *
 from error import SyntaxError
 
 
@@ -19,7 +20,6 @@ class Semantic:
         """构造非终结符的属性
         参数：
         --------
-        s_type: 综合属性
         """
         self.token_name = name
         self.s_type = ''
@@ -35,7 +35,7 @@ class Semantic:
         self.s_nextlist=[]
 
 class Syntax:
-    terminator = set()
+    
 
     def get_error(self):
         """
@@ -44,17 +44,16 @@ class Syntax:
         """
         return self.__error
 
-    def __init__(self, log_level=2, sharp='#', point='.', acc='acc', productions_file='C:\\Users\\YunMao\\Desktop\\Coding\\Compiler\\new\\productions1.txt'):
-        self.__error = list()
+    def __init__(self, log_level=2):
+        self.terminator = set()
+        self.__error = list() #errro列表
         self.log_level = log_level  # log显示等级（仅因为显示太多烦）
-        with open(productions_file, 'r') as f:
-            lines = f.readlines()
-            self.start = json.loads(lines[0])
-            self.productions = json.loads(lines[1])
+        self.start = syntax_start
+        self.productions = syntax_rule
         self.nonterminals = self.productions.keys()
 
         self.get_terminator()  # 获取终结符集合
-        self.sharp = sharp
+        self.sharp = "$"
         self.first = {nontermainal: {} for nontermainal in self.nonterminals}
         self.follow = {nontermainal: set()
                        for nontermainal in self.nonterminals}
@@ -62,7 +61,7 @@ class Syntax:
 
         # 计算项
         self.new_start = self.start + "'"
-        self.point = point
+        self.point = "."
         self.items = {key: list() for key in self.nonterminals}
         self.get_items()
 
@@ -70,7 +69,7 @@ class Syntax:
         self.status_list = [
             self.closure([(self.new_start, [self.point, self.start])]), ]
         self.analyse_table = dict()
-        self.acc = acc
+        self.acc = "acc"
         self.get_analyse_table()
 
     def get_terminator(self):
@@ -120,8 +119,7 @@ class Syntax:
                 self.first[nontermainal].update(new_dict)
             if last_first == self.first:
                 break
-        # pprint(self.first)
-        for i in self.terminator:  # 特殊处理终结符，等价于书上的FIRST级中包含终结符。
+        for i in self.terminator:  # 终结符的First集合是自己本身
             self.first[i]=({i:i})
         # 起始符号follow集
         self.follow[self.start].add(self.sharp)  # 若S是开始符，则$ 属于FOLLOW(S)
@@ -152,17 +150,12 @@ class Syntax:
                                 next_first_without_null = {
                                     key for key in self.first[right[new_i + 1]].keys() if key != ''}
                                 self.follow[sign] |= next_first_without_null
-                            print(sign)
-                            print("test1")
-                            print(next_first)
-                            print("test2")
-                            print(next_first_without_null)
                             # 若A→αBβ且FIRST(β)中包含ε，那么FOLLOW(A)中所有符号都在FOLLOW(B)中。
                             if '' in next_first:
                                 self.follow[sign] |= self.follow[nontermainal]
             if last_follow == self.follow:
                 break
-        if self.log_level >= 0:
+        if self.log_level >= 1:
             print('first:')
             pprint(self.first)
             print('follow:')
@@ -209,8 +202,8 @@ class Syntax:
             return ret
         else:
             return self.closure(ret)
+    
     # 实现goto函数
-
     def goto(self, production_list, sign):
         # 和求闭包大致相同，sign：goto的目标
         new_production_list = list()
@@ -265,8 +258,6 @@ class Syntax:
                         # 遍历产生式，if A->α.属于I[i],则所有的over属于FOLLOW(A)加入到ACTION[i,over]=r[j]
                         for left_ in self.nonterminals:
                             for right_ in self.productions[left_]:
-                                if right == ["S","NN", "S","."] and right_ == ["S","NN", "S"]:
-                                    print("stop")
                                 new_right = deepcopy(right)
                                 if new_right == [self.point]:
                                     new_right = ['']
@@ -305,8 +296,6 @@ class Syntax:
                 # 更新分析表
                 for production in production_set:
                     new_action.append(production)
-                    # print('flag')
-                    # print(production)
                 if index not in self.analyse_table.keys():
                     self.analyse_table[index] = {sign: new_action}
                 else:
@@ -327,8 +316,7 @@ class Syntax:
             pprint(self.analyse_table)
 
     def analyse_yufa(self):
-        if self.log_level >= 1:
-            print('grammar analyse:')
+        print('语法分析:')
         # 初始化输入串列表、状态栈、符号栈
         sharp = Token(self.sharp, 0, 0, 0, 0)
         self.tag_list.append(sharp)
@@ -591,4 +579,4 @@ class Syntax:
 
 
 compiler = Syntax()
-compiler.analyse("new/test.c")
+compiler.analyse("new/test2.c")

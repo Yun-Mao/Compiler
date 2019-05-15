@@ -23,9 +23,7 @@ types_num = [
 type_op = [
     r'\+', r'-', r'\*', r'/', r'%', r'==', r'>=', r'<=', r'!=', r'>', r'=', r'<'
 ]
-type_op_name = [
-    'add', 'sub', 'mult', 'div', 'mod', 'equal', 'bigger-equal', 'smaller-equal', 'not-equal', 'bigger', 'evaluate', 'smaller'
-]
+
 # 分隔符
 type_specialchar = [
     r',',r'\(',r'\)',r'\[',r'\]',r'\{',r'\}',r';',r'\''
