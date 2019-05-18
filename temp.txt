@@ -1,0 +1,23 @@
+analysing: C:/Users/YunMao/Desktop/Coding/Compiler/new/test.c
+
+词法分析是否成功:	 True
+
+语义分析过后符号表:
+int 简单变量 10 0
+float 简单变量 2.0 4
+int 简单变量 8 12
+三地址码:
+{0: 't0=3-4',
+ 1: 't1=2*t0',
+ 2: 't2=5+t1',
+ 3: 'a=t2',
+ 4: 'if a==2 goto 6',
+ 5: 'goto 9',
+ 6: 'a=2',
+ 7: 'b=2.0',
+ 8: 'goto 10',
+ 9: 'c=8',
+ 10: 'if c==8 goto 12',
+ 11: 'goto ',
+ 12: 'a=10',
+ 13: 'goto 10'}

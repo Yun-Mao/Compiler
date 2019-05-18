@@ -1,4 +1,4 @@
-"""The Rule of Lexical
+"""The Rule of Syntax
 @Author:YunMao
 """
 syntax_start = "P"

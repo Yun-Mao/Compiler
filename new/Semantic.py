@@ -44,7 +44,7 @@ class Syntax:
         """
         return self.__error
 
-    def __init__(self, log_level=2):
+    def __init__(self, log_level=1):
         self.terminator = set()
         self.__error = list() #errro列表
         self.log_level = log_level  # log显示等级（仅因为显示太多烦）
@@ -155,9 +155,13 @@ class Syntax:
                                 self.follow[sign] |= self.follow[nontermainal]
             if last_follow == self.follow:
                 break
-        if self.log_level >= 1:
+        if self.log_level == 1:
             print('first:')
-            pprint(self.first)
+            for key in self.first.keys():
+                print(key+":{",end="")
+                for i in self.first[key].keys():
+                    print("\""+i+"\"",end="")
+                print("}")
             print('follow:')
             pprint(self.follow)
 
@@ -179,9 +183,9 @@ class Syntax:
                         right[:i] + [self.point] + right[i:]
                     )
                 self.items[nonterminal].append(right + [self.point])
-        if self.log_level >= 2:
-            print('items:')
-            pprint(self.items)
+        #if self.log_level >= 2:
+            #print('items:')
+            #pprint(self.items)
 
     # 求输入项集的闭包
     def closure(self, production_list):
@@ -304,19 +308,20 @@ class Syntax:
             index += 1
             if index > count_index:
                 break
-        if self.log_level >= 2:
+        if self.log_level == 1:
             production_index = 0  # 产生式下标
             for left_ in self.nonterminals:
                 for right_ in self.productions[left_]:
                     print(production_index, left_, right_)
                     production_index += 1
-            print('stauts list:')
+            print('状态表:')
             pprint(self.status_list)
-            print('analyse table:')
+            print('分析表:')
             pprint(self.analyse_table)
 
     def analyse_yufa(self):
-        print('语法分析:')
+        if self.log_level == 1:
+            print('语法分析:')
         # 初始化输入串列表、状态栈、符号栈
         sharp = Token(self.sharp, 0, 0, 0, 0)
         self.tag_list.append(sharp)
@@ -327,37 +332,38 @@ class Syntax:
         three_addr_dict = {}
         three_addr_key = 0
         temp_index = 0  # 临时变量
+        temp_key = self.tag_list[string_index]
         # 不停分析直到接受
-        while self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0] != self.acc:
+        while self.analyse_table[status_stack[-1]][temp_key.token_type][0] != self.acc:
             # 如果不是r，则为s
 
-            if 'r' != self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][1]:
+            if 'r' != self.analyse_table[status_stack[-1]][temp_key.token_type][1]:
                 # push
-                status_stack.append(
-                    self.analyse_table[status_stack[-1]][self.tag_list[string_index].token_type][0])
-                sign_stack.append(self.tag_list[string_index])
+                status_stack.append(self.analyse_table[status_stack[-1]][temp_key.token_type][0])
+                sign_stack.append(temp_key)
                 string_index += 1
-                if self.log_level >= 9:
+                if self.log_level == 1:
                     pprint(status_stack)
                     for i in range(len(sign_stack)):
                         if i != 0:
-                            print(sign_stack[i].token_name)
+                            if i != len(sign_stack)-1:
+                                print(sign_stack[i].token_name+",",end="")
+                            else:
+                                print(sign_stack[i].token_name)
 
             else:
                 # 为r，取出对应产生式的左部与右部
                 left = self.analyse_table[status_stack[-1]
-                                          ][self.tag_list[string_index].token_type][2][0]
+                                          ][temp_key.token_type][2][0]
                 right = self.analyse_table[status_stack[-1]
-                                           ][self.tag_list[string_index].token_type][2][1]
+                                           ][temp_key.token_type][2][1]
                 # 语义分析
-                # TO-DO
-                #print("语义分析")
 
                 #print(self.analyse_table[status_stack[-1]]
                 #      [self.tag_list[string_index].token_type][0])
                 # 产生式下标
                 production_index = self.analyse_table[status_stack[-1]
-                                                      ][self.tag_list[string_index].token_type][0]
+                                                      ][temp_key.token_type][0]
                 # 新建语义分析
                 N_left = Semantic(left)
                 top = len(sign_stack)-1
@@ -380,7 +386,14 @@ class Syntax:
                         self.__error.append(SyntaxError(
                             '标识符'+index.token_name+'未定义', str(error_line)))
                         break
-                    self.symtable_list[index.token_symindex].lex_val = sign_stack[top-1].s_value
+                    if self.symtable_list[index.token_symindex].lex_type == 'int' and isinstance(sign_stack[top-1].s_value,int):
+                        self.symtable_list[index.token_symindex].lex_val = sign_stack[top-1].s_value
+                    elif self.symtable_list[index.token_symindex].lex_type == 'float' and isinstance(sign_stack[top-1].s_value,float):
+                        self.symtable_list[index.token_symindex].lex_val = sign_stack[top-1].s_value
+                    else:
+                        self.__error.append(SyntaxError(
+                            '类型不匹配'+index.token_name, str(error_line)))
+                        break
                     #self.symtable_list[index.token_symindex].lex_val = semantic_dict['E'].s_value
                     # print(index.token_name, '=',
                     #      semantic_dict['E'][-1].s_value)
@@ -523,23 +536,43 @@ class Syntax:
                 status_stack.append(
                     self.analyse_table[status_stack[-1]][left][0])
                 sign_stack.append(N_left)
-                # if self.log_level >= 1:
-                    # pprint(status_stack)
-                    # for i in range(len(sign_stack)):
-                        # if i != 0:
-                            # print(sign_stack[i].token_name)
-            # error，退出循环
-
-            if self.tag_list[string_index].token_type not in self.analyse_table[status_stack[-1]].keys():
+                if self.log_level == 1:
+                    pprint(status_stack)
+                    for i in range(len(sign_stack)):
+                        if i != 0:
+                            if i != len(sign_stack)-1:
+                                print(sign_stack[i].token_name+",",end="")
+                            else:
+                                print(sign_stack[i].token_name)
+            # error
+            if self.tag_list[string_index].token_type == "$" and "$" not in self.analyse_table[status_stack[-1]].keys():
+                self.__error.append(SyntaxError(
+                        '语法错误', str(error_line)))
+                break
+            elif self.tag_list[string_index].token_type not in self.analyse_table[status_stack[-1]].keys():
                 error_line = self.tag_list[string_index].token_line
+                key =  list(self.analyse_table[status_stack[-1]].keys())
+                for i in key:
+                    if i in self.terminator:
+                        temp_key = Token(i,i+"*",0,0,0)
+                        break
                 if status_stack[-1] == 4:
                     self.__error.append(SyntaxError(
                         'int 后只能跟标识符 错误跟随'+self.tag_list[string_index].token_name, str(error_line)))
-
-        for i in self.symtable_list:
-            print(self.symtable_list[i].lex_type, self.symtable_list[i].lex_kind,
-                  self.symtable_list[i].lex_val, self.symtable_list[i].lex_addr)
-        pprint(three_addr_dict)
+                elif status_stack[-1] == 11:
+                    self.__error.append(SyntaxError(
+                        '丢失;号'+self.tag_list[string_index].token_name, str(error_line)))
+                else:
+                    self.__error.append(SyntaxError('语法错误', str(error_line)))
+            else:
+                temp_key= self.tag_list[string_index]
+        if self.log_level == 2:
+            print("语义分析过后符号表:")
+            for i in self.symtable_list:
+                print(self.symtable_list[i].lex_type, self.symtable_list[i].lex_kind,
+                    self.symtable_list[i].lex_val, self.symtable_list[i].lex_addr)
+            print("三地址码:")
+            pprint(three_addr_dict)
         return True
 
     def analyse(self, file):
@@ -555,28 +588,31 @@ class Syntax:
         print('词法分析是否成功:\t', lexical_success)
         if lexical_success:
             lexical_result1, lexical_result2, lexical_result3 = lexical.get_result()
-            print()
-            print('词法分析结果:')
-            for i in lexical_result1:
-                print(i.token_type, i.token_name, i.token_line,
-                      i.token_code, i.token_symindex)
-                self.tag_list.append(i)
+            self.tag_list=lexical_result1
             self.symtable_list = lexical_result2
-            for i in lexical_result2:
-                print(lexical_result2[i].lex_type, lexical_result2[i].lex_kind,
-                      lexical_result2[i].lex_val, lexical_result2[i].lex_addr)
-            pprint(lexical_result3)
+            if self.log_level == 0:
+                print('词法分析结果:')
+                for i in lexical_result1:
+                    print("<"+str(i.token_code)+","+ i.token_name+">")
+                
+                print('词法分析后的符号表:')
+                for i in lexical_result2:
+                    print(str(i)+":")
+                    print(lexical_result2[i].lex_type, lexical_result2[i].lex_kind,
+                        lexical_result2[i].lex_val, lexical_result2[i].lex_addr)
+                print('词法分析后的标识符串:')
+                pprint(lexical_result3)
             print()
             self.analyse_yufa()
             syntax_error = self.get_error()
             for i in syntax_error:
-                print('错误原因:\t', i.info, '错误所在行:', i.line)
+                print('语法错误原因:\t', i.info, '错误所在行:', i.line)
             return False
         else:
             lexical_error = lexical.get_error()
             for i in lexical_error:
-                print('错误原因:\t', i.info, i.line)
+                print('词法错误原因:\t', i.info, i.line)
 
 
-compiler = Syntax()
-compiler.analyse("new/test2.c")
+# compiler = Syntax()
+# compiler.analyse("test.c")
